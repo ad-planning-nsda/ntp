@@ -7,7 +7,7 @@
 
 body {
   background-color: var(--bg-soft);
-  font-family: "Segoe UI", "Noto Sans Bengali", system-ui, -apple-system, sans-serif;
+  font-family: "Noto Sans Bengali", "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
 .navbar-brand {
