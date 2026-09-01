@@ -120,11 +120,15 @@ function downloadCsv(filename, headers, rows) {
 }
 
 function configureCheck() {
-  if (!window.API_URL || window.API_URL.indexOf("PASTE_YOUR") !== -1) {
+  const apiUrl = (window.API_URL || "").trim();
+  console.log("Trainer Portal — API_URL currently loaded as:", JSON.stringify(apiUrl));
+  if (!apiUrl || apiUrl.indexOf("PASTE_YOUR") !== -1) {
     const div = document.createElement("div");
     div.className = "alert alert-danger m-3";
     div.innerHTML =
-      "<strong>Setup needed:</strong> open <code>assets/config.js</code> and paste your Google Apps Script Web App URL.";
+      "<strong>Setup needed:</strong> open <code>assets/config.js</code> and paste your Google Apps Script Web App URL. " +
+      "If you already did this and still see this message, your browser or host is serving a cached copy of " +
+      "<code>assets/config.js</code> — hard refresh (Ctrl/Cmd+Shift+R) or re-upload the file.";
     document.body.prepend(div);
     return false;
   }

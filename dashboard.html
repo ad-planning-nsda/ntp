@@ -110,7 +110,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="assets/config.js"></script>
+<script src="assets/config.js?v=2"></script>
 <script src="assets/app.js"></script>
 <script>
   Session.requireAuth();
@@ -240,7 +240,7 @@
   }
 
   function viewDetails(rowIndex) {
-    window.open(`details.html?row=${rowIndex}`, "_blank");
+    window.location.href = `details.html?row=${rowIndex}`;
   }
 
   function escapeHtml(str) {
