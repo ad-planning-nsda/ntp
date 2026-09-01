@@ -26,12 +26,15 @@
       <div class="opacity-75" id="profileEmail">—</div>
       <div class="opacity-75 small" id="profileSector">—</div>
     </div>
+    <div class="ms-sm-auto" id="profileStatusBadge"></div>
   </div>
 
   <div class="card mb-4">
     <div class="card-header bg-white fw-semibold"><i class="bi bi-person-lines-fill me-2"></i>Personal & Application Information</div>
-    <div class="card-body">
-      <div class="row g-4" id="fieldsGrid"></div>
+    <div class="card-body p-0 p-sm-3">
+      <table class="table kv-table mb-0" id="fieldsTable">
+        <tbody></tbody>
+      </table>
     </div>
   </div>
 
@@ -54,7 +57,6 @@
         <textarea class="form-control" id="remarksInput" rows="3" placeholder="Add remarks..."></textarea>
       </div>
       <button class="btn btn-brand" id="saveBtn">
-        <span class="spinner-border spinner-border-sm d-none" id="saveSpinner"></span>
         <i class="bi bi-save me-1"></i>Save
       </button>
     </div>
@@ -69,6 +71,56 @@
 
 <div id="errorBox" class="container" style="display:none;">
   <div class="alert alert-danger" id="errorMsg"></div>
+</div>
+
+<!-- Document viewer modal -->
+<div class="modal fade" id="docModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title" id="docModalTitle"><i class="bi bi-file-earmark-text me-2"></i>Document</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="btn-group mb-3 flex-wrap" id="docSwitcher"></div>
+        <iframe id="docFrame" src=""></iframe>
+      </div>
+      <div class="modal-footer">
+        <a href="#" target="_blank" rel="noopener" class="btn btn-outline-primary" id="docOpenNewTab">
+          <i class="bi bi-box-arrow-up-right me-1"></i>Open in New Tab
+        </a>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-lg me-1"></i>Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm action modal -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title"><i class="bi bi-question-circle me-2"></i>Confirm Review Decision</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2">You are about to mark this applicant as:</p>
+        <p class="fs-5 fw-bold" id="confirmActionText">—</p>
+        <p class="mb-1 text-muted small">Remarks:</p>
+        <p id="confirmRemarksText" class="fst-italic">—</p>
+        <div class="alert alert-warning small mb-0"><i class="bi bi-exclamation-triangle me-1"></i>This will save immediately to the database.</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-brand" id="confirmSaveBtn">
+          <span class="spinner-border spinner-border-sm d-none" id="confirmSpinner"></span>
+          Yes, Save
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -91,6 +143,57 @@
     if (v === null || v === undefined || v === "") return "—";
     return escapeHtml(v);
   }
+
+  function statusBadgeHtml(action) {
+    if (action === "Recommended") return `<span class="badge badge-recommended fs-6">Recommended</span>`;
+    if (action === "Not Recommended") return `<span class="badge badge-not-recommended fs-6">Not Recommended</span>`;
+    return `<span class="badge badge-pending fs-6">Pending</span>`;
+  }
+
+  function driveIdFromLink(link) {
+    const m = link.match(/[?&]id=([^&]+)/) || link.match(/\/d\/([^/]+)/);
+    return m ? m[1] : null;
+  }
+
+  const docModal = new bootstrap.Modal(document.getElementById("docModal"));
+  let currentDocLinks = [];
+
+  function openDocModalForCol(col) {
+    const f = window.__docFields[col];
+    if (!f) return;
+    openDocModal(f.label, f.links);
+  }
+
+  function openDocModal(label, links) {
+    currentDocLinks = links;
+    document.getElementById("docModalTitle").innerHTML = `<i class="bi bi-file-earmark-text me-2"></i>${escapeHtml(label)}`;
+    const switcher = document.getElementById("docSwitcher");
+    switcher.innerHTML = links.length > 1
+      ? links.map((l, i) => `<button type="button" class="btn btn-sm btn-outline-primary" onclick="showDoc(${i})">File ${i + 1}</button>`).join("")
+      : "";
+    showDoc(0);
+    docModal.show();
+  }
+
+  function showDoc(i) {
+    const link = currentDocLinks[i];
+    const id = driveIdFromLink(link);
+    const previewUrl = id ? `https://drive.google.com/file/d/${id}/preview` : link;
+    document.getElementById("docFrame").src = previewUrl;
+    document.getElementById("docOpenNewTab").href = link;
+    document.querySelectorAll("#docSwitcher .btn").forEach((b, idx) => {
+      b.classList.toggle("btn-primary", idx === i);
+      b.classList.toggle("btn-outline-primary", idx !== i);
+    });
+  }
+
+  // clear iframe when modal closes so playback/loads stop
+  document.getElementById("docModal").addEventListener("hidden.bs.modal", () => {
+    document.getElementById("docFrame").src = "";
+  });
+
+  let latestAction = "";
+  let latestRemarks = "";
 
   async function load() {
     if (!rowIndex) {
@@ -129,29 +232,33 @@
     document.getElementById("profileName").textContent = nameEn || (byCol[3] ? byCol[3].value : "Applicant");
     document.getElementById("profileEmail").innerHTML = `<i class="bi bi-envelope me-1"></i>${fmtValue(email)}`;
     document.getElementById("profileSector").innerHTML = sector ? `<i class="bi bi-briefcase me-1"></i>${escapeHtml(sector)}` : "";
+    document.getElementById("profileStatusBadge").innerHTML = statusBadgeHtml(res.action);
 
     const initials = (nameEn || "?").trim().split(/\s+/).map(w => w[0]).slice(0, 2).join("").toUpperCase();
     document.getElementById("avatarInitials").textContent = initials || "?";
 
     document.title = `${nameEn || "Applicant"} — Trainer Database Portal`;
 
-    const grid = document.getElementById("fieldsGrid");
-    grid.innerHTML = res.fields.map(f => {
+    // store doc field data on window for modal buttons, keyed by column
+    window.__docFields = {};
+    res.fields.forEach(f => { if (f.isDoc) window.__docFields[f.col] = f; });
+
+    const tbody = document.querySelector("#fieldsTable tbody");
+    tbody.innerHTML = res.fields.map(f => {
+      let valueHtml;
       if (f.isDoc) {
-        const btns = f.links.length
-          ? f.links.map((link, i) => `<a href="${escapeHtml(link)}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary doc-btn">
-              <i class="bi bi-file-earmark-text me-1"></i>${f.links.length > 1 ? "Document " + (i + 1) : "View Document"}
-            </a>`).join("")
+        valueHtml = f.links.length
+          ? `<button type="button" class="btn btn-sm btn-outline-primary" onclick="openDocModalForCol(${f.col})">
+               <i class="bi bi-eye me-1"></i>View Document${f.links.length > 1 ? "s (" + f.links.length + ")" : ""}
+             </button>`
           : `<span class="text-muted">Not provided</span>`;
-        return `<div class="col-md-6">
-          <div class="field-label">${escapeHtml(f.label)}</div>
-          <div class="field-value">${btns}</div>
-        </div>`;
+      } else {
+        valueHtml = fmtValue(f.value);
       }
-      return `<div class="col-md-6">
-        <div class="field-label">${escapeHtml(f.label)}</div>
-        <div class="field-value">${fmtValue(f.value)}</div>
-      </div>`;
+      return `<tr>
+        <td class="kv-label">${escapeHtml(f.label)}</td>
+        <td class="kv-value">${valueHtml}</td>
+      </tr>`;
     }).join("");
 
     if (res.action === "Recommended") document.getElementById("actRecommended").checked = true;
@@ -159,21 +266,35 @@
     document.getElementById("remarksInput").value = res.remarks || "";
   }
 
-  document.getElementById("saveBtn").addEventListener("click", async () => {
-    const btn = document.getElementById("saveBtn");
-    const spinner = document.getElementById("saveSpinner");
-    const alertBox = document.getElementById("saveAlert");
-    alertBox.innerHTML = "";
+  const confirmModal = new bootstrap.Modal(document.getElementById("confirmModal"));
 
+  document.getElementById("saveBtn").addEventListener("click", () => {
     const selected = document.querySelector('input[name="actionRadio"]:checked');
-    const actionValue = selected ? selected.value : "";
-    const remarks = document.getElementById("remarksInput").value;
+    if (!selected) {
+      document.getElementById("saveAlert").innerHTML = `<div class="alert alert-warning py-2">Please choose Recommended or Not Recommended first.</div>`;
+      return;
+    }
+    latestAction = selected.value;
+    latestRemarks = document.getElementById("remarksInput").value;
 
+    document.getElementById("confirmActionText").textContent = latestAction;
+    document.getElementById("confirmActionText").className =
+      "fs-5 fw-bold " + (latestAction === "Recommended" ? "text-success" : "text-danger");
+    document.getElementById("confirmRemarksText").textContent = latestRemarks || "(none)";
+    confirmModal.show();
+  });
+
+  document.getElementById("confirmSaveBtn").addEventListener("click", async () => {
+    const btn = document.getElementById("confirmSaveBtn");
+    const spinner = document.getElementById("confirmSpinner");
+    const alertBox = document.getElementById("saveAlert");
     btn.disabled = true; spinner.classList.remove("d-none");
     try {
-      const res = await Api.updateAction(rowIndex, actionValue, remarks);
+      const res = await Api.updateAction(rowIndex, latestAction, latestRemarks);
       if (res.success) {
+        confirmModal.hide();
         alertBox.innerHTML = `<div class="alert alert-success py-2"><i class="bi bi-check-circle me-1"></i>Saved successfully.</div>`;
+        document.getElementById("profileStatusBadge").innerHTML = statusBadgeHtml(latestAction);
       } else {
         alertBox.innerHTML = `<div class="alert alert-danger py-2">${res.message || "Save failed"}</div>`;
       }

@@ -24,14 +24,18 @@ const Api = {
   register(payload) {
     return this._post({ action: "register", ...payload });
   },
-  getRows({ page, pageSize, search }) {
+  getRows({ page, pageSize, search, status }) {
     return this._get({
       action: "getRows",
       token: Session.token(),
       page,
       pageSize,
       search: search || "",
+      status: status || "all",
     });
+  },
+  exportRows(status) {
+    return this._get({ action: "exportRows", token: Session.token(), status: status || "all" });
   },
   getRowDetail(rowIndex) {
     return this._get({ action: "getRowDetail", token: Session.token(), rowIndex });
@@ -75,6 +79,44 @@ const Session = {
     }
   },
 };
+
+// Toggle a password field between hidden/visible, swapping the eye icon.
+function togglePasswordField(inputId, iconId) {
+  const input = document.getElementById(inputId);
+  const icon = document.getElementById(iconId);
+  if (input.type === "password") {
+    input.type = "text";
+    icon.classList.remove("bi-eye");
+    icon.classList.add("bi-eye-slash");
+  } else {
+    input.type = "password";
+    icon.classList.remove("bi-eye-slash");
+    icon.classList.add("bi-eye");
+  }
+}
+
+// Build and trigger download of a CSV file from headers + rows arrays.
+function downloadCsv(filename, headers, rows) {
+  const esc = (v) => {
+    if (v === null || v === undefined) v = "";
+    v = String(v);
+    if (/[",\n]/.test(v)) v = '"' + v.replace(/"/g, '""') + '"';
+    return v;
+  };
+  const lines = [headers.map(esc).join(",")].concat(
+    rows.map((r) => r.map(esc).join(","))
+  );
+  const csv = "\uFEFF" + lines.join("\r\n"); // BOM for correct Bangla display in Excel
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 function configureCheck() {
   if (!window.API_URL || window.API_URL.indexOf("PASTE_YOUR") !== -1) {

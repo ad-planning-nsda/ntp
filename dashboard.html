@@ -22,18 +22,51 @@
 
 <div class="container pb-5">
 
-  <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+  <div class="d-flex flex-wrap justify-content-between align-items-start mb-3 gap-2">
     <div>
-      <h5 class="fw-bold mb-0">Applicant Records</h5>
+      <h5 class="fw-bold mb-1">Applicant Records</h5>
       <div class="text-muted small" id="totalCount">Loading…</div>
     </div>
-    <div class="input-group" style="max-width: 320px;">
-      <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-      <input type="text" class="form-control" id="searchInput" placeholder="Search by name or email">
+    <div class="d-flex gap-2 flex-wrap">
+      <div class="input-group" style="max-width: 260px;">
+        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+        <input type="text" class="form-control" id="searchInput" placeholder="Search name or email">
+      </div>
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+          <i class="bi bi-download me-1"></i>Download
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); doExport('all')">All Applicants</a></li>
+          <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); doExport('pending')">Pending</a></li>
+          <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); doExport('Recommended')">Recommended</a></li>
+          <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); doExport('Not Recommended')">Not Recommended</a></li>
+        </ul>
+      </div>
     </div>
   </div>
 
-  <div class="card">
+  <!-- Status filter tabs (5 options) -->
+  <ul class="nav status-tabs mb-3" id="statusTabs">
+    <li class="nav-item">
+      <a class="nav-link active" href="#" data-status="all" onclick="return selectStatus(event,'all')">All <span class="badge bg-secondary" id="cnt-all">0</span></a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#" data-status="pending" onclick="return selectStatus(event,'pending')">Pending <span class="badge bg-secondary" id="cnt-pending">0</span></a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#" data-status="Recommended" onclick="return selectStatus(event,'Recommended')">Recommended <span class="badge bg-success" id="cnt-Recommended">0</span></a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#" data-status="Not Recommended" onclick="return selectStatus(event,'Not Recommended')">Not Recommended <span class="badge bg-danger" id="cnt-NotRecommended">0</span></a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#" data-status="reviewed" onclick="return selectStatus(event,'reviewed')">Reviewed <span class="badge bg-secondary" id="cnt-reviewed">0</span></a>
+    </li>
+  </ul>
+
+  <!-- Desktop / tablet table -->
+  <div class="card d-none d-md-block">
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
         <thead>
@@ -52,8 +85,13 @@
     </div>
   </div>
 
+  <!-- Mobile card list -->
+  <div class="d-md-none" id="cardList">
+    <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+  </div>
+
   <nav class="mt-4">
-    <ul class="pagination justify-content-center" id="pagination"></ul>
+    <ul class="pagination justify-content-center flex-wrap" id="pagination"></ul>
   </nav>
 
 </div>
@@ -74,6 +112,7 @@
   const PAGE_SIZE = 15;
   let currentPage = 1;
   let currentSearch = "";
+  let currentStatus = "all";
   let searchDebounce;
 
   function statusBadge(action) {
@@ -82,20 +121,43 @@
     return `<span class="badge badge-pending">Pending</span>`;
   }
 
+  function selectStatus(e, status) {
+    e.preventDefault();
+    currentStatus = status;
+    document.querySelectorAll("#statusTabs .nav-link").forEach(a => a.classList.remove("active"));
+    e.currentTarget.classList.add("active");
+    loadRows(1);
+    return false;
+  }
+
+  function updateCounts(counts) {
+    if (!counts) return;
+    document.getElementById("cnt-all").textContent = counts.all ?? 0;
+    document.getElementById("cnt-pending").textContent = counts.pending ?? 0;
+    document.getElementById("cnt-Recommended").textContent = counts.Recommended ?? 0;
+    document.getElementById("cnt-NotRecommended").textContent = counts["Not Recommended"] ?? 0;
+    document.getElementById("cnt-reviewed").textContent = counts.reviewed ?? 0;
+  }
+
   async function loadRows(page = 1) {
     currentPage = page;
     const tbody = document.getElementById("tableBody");
+    const cardList = document.getElementById("cardList");
     tbody.innerHTML = `<tr><td colspan="5" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>`;
+    cardList.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>`;
     try {
-      const res = await Api.getRows({ page, pageSize: PAGE_SIZE, search: currentSearch });
+      const res = await Api.getRows({ page, pageSize: PAGE_SIZE, search: currentSearch, status: currentStatus });
       if (!res.success) {
         tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">${res.message || "Failed to load"}</td></tr>`;
+        cardList.innerHTML = `<div class="text-center text-danger py-4">${res.message || "Failed to load"}</div>`;
         return;
       }
-      document.getElementById("totalCount").textContent = `${res.total} record${res.total === 1 ? "" : "s"} found`;
+      updateCounts(res.counts);
+      document.getElementById("totalCount").textContent = `${res.total} record${res.total === 1 ? "" : "s"} in this view`;
 
       if (res.rows.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">No records found</td></tr>`;
+        cardList.innerHTML = `<div class="text-center text-muted py-4">No records found</div>`;
       } else {
         tbody.innerHTML = res.rows.map((r, i) => `
           <tr>
@@ -110,11 +172,29 @@
             </td>
           </tr>
         `).join("");
+
+        cardList.innerHTML = res.rows.map((r, i) => `
+          <div class="card applicant-card mb-2">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="fw-semibold">${escapeHtml(r.nameEn || r.nameBn || "—")}</div>
+                  <div class="text-muted small">${escapeHtml(r.email || "—")}</div>
+                </div>
+                ${statusBadge(r.action)}
+              </div>
+              <button class="btn btn-sm btn-brand w-100 mt-3" onclick="viewDetails(${r.rowIndex})">
+                <i class="bi bi-eye me-1"></i>View Details
+              </button>
+            </div>
+          </div>
+        `).join("");
       }
 
       renderPagination(res.total, page);
     } catch (err) {
       tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">Could not reach server. Check assets/config.js.</td></tr>`;
+      cardList.innerHTML = `<div class="text-center text-danger py-4">Could not reach server.</div>`;
     }
   }
 
@@ -158,6 +238,18 @@
       loadRows(1);
     }, 400);
   });
+
+  async function doExport(status) {
+    try {
+      const res = await Api.exportRows(status);
+      if (!res.success) { alert(res.message || "Export failed"); return; }
+      if (res.rows.length === 0) { alert("No records in this category."); return; }
+      const label = status === "all" ? "All" : status === "pending" ? "Pending" : status;
+      downloadCsv(`Applicants_${label.replace(/\s+/g, "_")}.csv`, res.headers, res.rows);
+    } catch (err) {
+      alert("Could not reach server.");
+    }
+  }
 
   loadRows(1);
 </script>

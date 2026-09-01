@@ -39,7 +39,12 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Password</label>
-              <input type="password" class="form-control" id="loginPassword" required autocomplete="current-password">
+              <div class="input-group">
+                <input type="password" class="form-control" id="loginPassword" required autocomplete="current-password">
+                <button class="btn btn-outline-secondary pw-toggle" type="button" onclick="togglePasswordField('loginPassword','loginPwIcon')">
+                  <i class="bi bi-eye" id="loginPwIcon"></i>
+                </button>
+              </div>
             </div>
             <button type="submit" class="btn btn-brand w-100" id="loginBtn">
               <span class="spinner-border spinner-border-sm d-none" id="loginSpinner"></span>
@@ -70,7 +75,12 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Password</label>
-              <input type="password" class="form-control" id="regPassword" required minlength="4">
+              <div class="input-group">
+                <input type="password" class="form-control" id="regPassword" required minlength="4">
+                <button class="btn btn-outline-secondary pw-toggle" type="button" onclick="togglePasswordField('regPassword','regPwIcon')">
+                  <i class="bi bi-eye" id="regPwIcon"></i>
+                </button>
+              </div>
             </div>
             <button type="submit" class="btn btn-brand w-100" id="registerBtn">
               <span class="spinner-border spinner-border-sm d-none" id="registerSpinner"></span>
