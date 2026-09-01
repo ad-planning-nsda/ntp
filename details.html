@@ -23,6 +23,7 @@
     <div class="avatar-circle" id="avatarInitials">--</div>
     <div>
       <h4 class="fw-bold mb-1" id="profileName">—</h4>
+      <div class="opacity-90 small mb-1" id="profileOccupation"></div>
       <div class="opacity-75" id="profileEmail">—</div>
       <div class="opacity-75 small" id="profileSector">—</div>
     </div>
@@ -228,8 +229,12 @@
     const nameEn = byCol[4] ? byCol[4].value : "";
     const email = byCol[2] ? byCol[2].value : "";
     const sector = byCol[16] ? byCol[16].value : "";
+    const occupation = byCol[17] ? byCol[17].value : "";
 
     document.getElementById("profileName").textContent = nameEn || (byCol[3] ? byCol[3].value : "Applicant");
+    document.getElementById("profileOccupation").innerHTML = occupation
+      ? `<i class="bi bi-award me-1"></i>${escapeHtml(occupation)}`
+      : "";
     document.getElementById("profileEmail").innerHTML = `<i class="bi bi-envelope me-1"></i>${fmtValue(email)}`;
     document.getElementById("profileSector").innerHTML = sector ? `<i class="bi bi-briefcase me-1"></i>${escapeHtml(sector)}` : "";
     document.getElementById("profileStatusBadge").innerHTML = statusBadgeHtml(res.action);

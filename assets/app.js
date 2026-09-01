@@ -6,7 +6,8 @@ const Api = {
   async _get(params) {
     const url = new URL(window.API_URL);
     Object.keys(params).forEach(k => url.searchParams.set(k, params[k]));
-    const res = await fetch(url.toString(), { method: "GET" });
+    url.searchParams.set("_ts", Date.now()); // cache-buster
+    const res = await fetch(url.toString(), { method: "GET", cache: "no-store" });
     return res.json();
   },
   async _post(params) {

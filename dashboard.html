@@ -32,6 +32,16 @@
         <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
         <input type="text" class="form-control" id="searchInput" placeholder="Search name or email">
       </div>
+      <div class="input-group" style="max-width: 210px;">
+        <span class="input-group-text bg-white"><i class="bi bi-funnel"></i></span>
+        <select class="form-select" id="statusFilterSelect">
+          <option value="all">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="Recommended">Recommended</option>
+          <option value="Not Recommended">Not Recommended</option>
+          <option value="reviewed">Reviewed</option>
+        </select>
+      </div>
       <div class="dropdown">
         <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
           <i class="bi bi-download me-1"></i>Download
@@ -122,13 +132,19 @@
   }
 
   function selectStatus(e, status) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     currentStatus = status;
-    document.querySelectorAll("#statusTabs .nav-link").forEach(a => a.classList.remove("active"));
-    e.currentTarget.classList.add("active");
+    document.querySelectorAll("#statusTabs .nav-link").forEach(a => {
+      a.classList.toggle("active", a.dataset.status === status);
+    });
+    document.getElementById("statusFilterSelect").value = status;
     loadRows(1);
     return false;
   }
+
+  document.getElementById("statusFilterSelect").addEventListener("change", (e) => {
+    selectStatus(null, e.target.value);
+  });
 
   function updateCounts(counts) {
     if (!counts) return;
