@@ -1,0 +1,136 @@
+:root {
+  --brand-primary: #0b3d63;
+  --brand-primary-dark: #082a45;
+  --brand-accent: #1a7f5a;
+  --bg-soft: #f4f7fb;
+}
+
+body {
+  background-color: var(--bg-soft);
+  font-family: "Segoe UI", "Noto Sans Bengali", system-ui, -apple-system, sans-serif;
+}
+
+.navbar-brand {
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.bg-brand {
+  background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-primary-dark) 100%) !important;
+}
+
+.btn-brand {
+  background-color: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: #fff;
+}
+.btn-brand:hover {
+  background-color: var(--brand-primary-dark);
+  border-color: var(--brand-primary-dark);
+  color: #fff;
+}
+
+.auth-card {
+  max-width: 460px;
+  width: 100%;
+  border: none;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(11, 61, 99, 0.12);
+}
+
+.auth-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: radial-gradient(circle at top left, #0b3d63 0%, #06263f 55%, #041a2c 100%);
+}
+
+.card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(15, 40, 70, 0.08);
+}
+
+.table thead th {
+  background-color: var(--brand-primary);
+  color: #fff;
+  border: none;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.table-hover tbody tr:hover {
+  background-color: #eef4fa;
+}
+
+.badge-recommended {
+  background-color: #1a7f5a;
+}
+.badge-not-recommended {
+  background-color: #b3261e;
+}
+.badge-pending {
+  background-color: #6c757d;
+}
+
+.profile-header {
+  background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-primary-dark) 100%);
+  color: #fff;
+  border-radius: 14px;
+  padding: 28px;
+}
+
+.field-label {
+  font-size: 0.8rem;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 2px;
+}
+
+.field-value {
+  font-size: 1rem;
+  color: #17263b;
+  word-break: break-word;
+}
+
+.doc-btn {
+  margin: 3px 4px 3px 0;
+}
+
+.avatar-circle {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+@media (max-width: 576px) {
+  .profile-header {
+    padding: 20px;
+    text-align: center;
+  }
+  .avatar-circle {
+    margin: 0 auto 12px auto;
+  }
+}
+
+.pagination .page-link {
+  color: var(--brand-primary);
+}
+.pagination .page-item.active .page-link {
+  background-color: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+
+.footer-note {
+  color: #8b98a8;
+  font-size: 0.8rem;
+}

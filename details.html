@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Applicant Details — Trainer Database Portal</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link href="assets/style.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-brand mb-4 shadow-sm">
+  <div class="container">
+    <span class="navbar-brand"><i class="bi bi-person-badge me-2"></i>Trainer Database Portal</span>
+    <button class="btn btn-outline-light btn-sm" onclick="window.close()"><i class="bi bi-x-lg me-1"></i>Close Tab</button>
+  </div>
+</nav>
+
+<div class="container pb-5" id="pageContent" style="display:none;">
+
+  <div class="profile-header mb-4 d-flex flex-column flex-sm-row align-items-sm-center gap-3">
+    <div class="avatar-circle" id="avatarInitials">--</div>
+    <div>
+      <h4 class="fw-bold mb-1" id="profileName">—</h4>
+      <div class="opacity-75" id="profileEmail">—</div>
+      <div class="opacity-75 small" id="profileSector">—</div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-white fw-semibold"><i class="bi bi-person-lines-fill me-2"></i>Personal & Application Information</div>
+    <div class="card-body">
+      <div class="row g-4" id="fieldsGrid"></div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-white fw-semibold"><i class="bi bi-clipboard2-check me-2"></i>Review</div>
+    <div class="card-body">
+      <div id="saveAlert"></div>
+      <div class="mb-3">
+        <label class="form-label d-block fw-semibold">Action</label>
+        <div class="btn-group" role="group">
+          <input type="radio" class="btn-check" name="actionRadio" id="actRecommended" value="Recommended" autocomplete="off">
+          <label class="btn btn-outline-success" for="actRecommended"><i class="bi bi-check-circle me-1"></i>Recommended</label>
+
+          <input type="radio" class="btn-check" name="actionRadio" id="actNotRecommended" value="Not Recommended" autocomplete="off">
+          <label class="btn btn-outline-danger" for="actNotRecommended"><i class="bi bi-x-circle me-1"></i>Not Recommended</label>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Remarks</label>
+        <textarea class="form-control" id="remarksInput" rows="3" placeholder="Add remarks..."></textarea>
+      </div>
+      <button class="btn btn-brand" id="saveBtn">
+        <span class="spinner-border spinner-border-sm d-none" id="saveSpinner"></span>
+        <i class="bi bi-save me-1"></i>Save
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<div id="loadingBox" class="text-center py-5">
+  <div class="spinner-border text-primary"></div>
+  <div class="text-muted mt-2">Loading applicant details…</div>
+</div>
+
+<div id="errorBox" class="container" style="display:none;">
+  <div class="alert alert-danger" id="errorMsg"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="assets/config.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  Session.requireAuth();
+  configureCheck();
+
+  const params = new URLSearchParams(window.location.search);
+  const rowIndex = params.get("row");
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (m) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[m]));
+  }
+
+  function fmtValue(v) {
+    if (v === null || v === undefined || v === "") return "—";
+    return escapeHtml(v);
+  }
+
+  async function load() {
+    if (!rowIndex) {
+      showError("No applicant specified.");
+      return;
+    }
+    try {
+      const res = await Api.getRowDetail(rowIndex);
+      if (!res.success) {
+        showError(res.message || "Could not load applicant.");
+        return;
+      }
+      render(res);
+    } catch (err) {
+      showError("Could not reach server. Check assets/config.js.");
+    }
+  }
+
+  function showError(msg) {
+    document.getElementById("loadingBox").style.display = "none";
+    document.getElementById("errorBox").style.display = "block";
+    document.getElementById("errorMsg").textContent = msg;
+  }
+
+  function render(res) {
+    document.getElementById("loadingBox").style.display = "none";
+    document.getElementById("pageContent").style.display = "block";
+
+    const byCol = {};
+    res.fields.forEach(f => byCol[f.col] = f);
+
+    const nameEn = byCol[4] ? byCol[4].value : "";
+    const email = byCol[2] ? byCol[2].value : "";
+    const sector = byCol[16] ? byCol[16].value : "";
+
+    document.getElementById("profileName").textContent = nameEn || (byCol[3] ? byCol[3].value : "Applicant");
+    document.getElementById("profileEmail").innerHTML = `<i class="bi bi-envelope me-1"></i>${fmtValue(email)}`;
+    document.getElementById("profileSector").innerHTML = sector ? `<i class="bi bi-briefcase me-1"></i>${escapeHtml(sector)}` : "";
+
+    const initials = (nameEn || "?").trim().split(/\s+/).map(w => w[0]).slice(0, 2).join("").toUpperCase();
+    document.getElementById("avatarInitials").textContent = initials || "?";
+
+    document.title = `${nameEn || "Applicant"} — Trainer Database Portal`;
+
+    const grid = document.getElementById("fieldsGrid");
+    grid.innerHTML = res.fields.map(f => {
+      if (f.isDoc) {
+        const btns = f.links.length
+          ? f.links.map((link, i) => `<a href="${escapeHtml(link)}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary doc-btn">
+              <i class="bi bi-file-earmark-text me-1"></i>${f.links.length > 1 ? "Document " + (i + 1) : "View Document"}
+            </a>`).join("")
+          : `<span class="text-muted">Not provided</span>`;
+        return `<div class="col-md-6">
+          <div class="field-label">${escapeHtml(f.label)}</div>
+          <div class="field-value">${btns}</div>
+        </div>`;
+      }
+      return `<div class="col-md-6">
+        <div class="field-label">${escapeHtml(f.label)}</div>
+        <div class="field-value">${fmtValue(f.value)}</div>
+      </div>`;
+    }).join("");
+
+    if (res.action === "Recommended") document.getElementById("actRecommended").checked = true;
+    if (res.action === "Not Recommended") document.getElementById("actNotRecommended").checked = true;
+    document.getElementById("remarksInput").value = res.remarks || "";
+  }
+
+  document.getElementById("saveBtn").addEventListener("click", async () => {
+    const btn = document.getElementById("saveBtn");
+    const spinner = document.getElementById("saveSpinner");
+    const alertBox = document.getElementById("saveAlert");
+    alertBox.innerHTML = "";
+
+    const selected = document.querySelector('input[name="actionRadio"]:checked');
+    const actionValue = selected ? selected.value : "";
+    const remarks = document.getElementById("remarksInput").value;
+
+    btn.disabled = true; spinner.classList.remove("d-none");
+    try {
+      const res = await Api.updateAction(rowIndex, actionValue, remarks);
+      if (res.success) {
+        alertBox.innerHTML = `<div class="alert alert-success py-2"><i class="bi bi-check-circle me-1"></i>Saved successfully.</div>`;
+      } else {
+        alertBox.innerHTML = `<div class="alert alert-danger py-2">${res.message || "Save failed"}</div>`;
+      }
+    } catch (err) {
+      alertBox.innerHTML = `<div class="alert alert-danger py-2">Could not reach server.</div>`;
+    } finally {
+      btn.disabled = false; spinner.classList.add("d-none");
+    }
+  });
+
+  load();
+</script>
+</body>
+</html>

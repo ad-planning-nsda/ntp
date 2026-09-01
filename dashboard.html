@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard — Trainer Database Portal</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link href="assets/style.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-brand mb-4 shadow-sm">
+  <div class="container">
+    <span class="navbar-brand"><i class="bi bi-person-badge me-2"></i>Trainer Database Portal</span>
+    <div class="d-flex align-items-center text-white">
+      <span class="me-3 d-none d-sm-inline small" id="whoami"></span>
+      <button class="btn btn-outline-light btn-sm" id="logoutBtn"><i class="bi bi-box-arrow-right me-1"></i>Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div class="container pb-5">
+
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <div>
+      <h5 class="fw-bold mb-0">Applicant Records</h5>
+      <div class="text-muted small" id="totalCount">Loading…</div>
+    </div>
+    <div class="input-group" style="max-width: 320px;">
+      <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+      <input type="text" class="form-control" id="searchInput" placeholder="Search by name or email">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Status</th>
+            <th class="text-end">Action</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr><td colspan="5" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <nav class="mt-4">
+    <ul class="pagination justify-content-center" id="pagination"></ul>
+  </nav>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="assets/config.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  Session.requireAuth();
+  configureCheck();
+
+  document.getElementById("whoami").textContent = `${Session.name()}${Session.designation() ? " · " + Session.designation() : ""}`;
+  document.getElementById("logoutBtn").addEventListener("click", () => {
+    Session.clear();
+    window.location.href = "index.html";
+  });
+
+  const PAGE_SIZE = 15;
+  let currentPage = 1;
+  let currentSearch = "";
+  let searchDebounce;
+
+  function statusBadge(action) {
+    if (action === "Recommended") return `<span class="badge badge-recommended">Recommended</span>`;
+    if (action === "Not Recommended") return `<span class="badge badge-not-recommended">Not Recommended</span>`;
+    return `<span class="badge badge-pending">Pending</span>`;
+  }
+
+  async function loadRows(page = 1) {
+    currentPage = page;
+    const tbody = document.getElementById("tableBody");
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>`;
+    try {
+      const res = await Api.getRows({ page, pageSize: PAGE_SIZE, search: currentSearch });
+      if (!res.success) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">${res.message || "Failed to load"}</td></tr>`;
+        return;
+      }
+      document.getElementById("totalCount").textContent = `${res.total} record${res.total === 1 ? "" : "s"} found`;
+
+      if (res.rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">No records found</td></tr>`;
+      } else {
+        tbody.innerHTML = res.rows.map((r, i) => `
+          <tr>
+            <td>${(page - 1) * PAGE_SIZE + i + 1}</td>
+            <td class="fw-semibold">${escapeHtml(r.nameEn || r.nameBn || "—")}</td>
+            <td>${escapeHtml(r.email || "—")}</td>
+            <td>${statusBadge(r.action)}</td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-brand" onclick="viewDetails(${r.rowIndex})">
+                <i class="bi bi-eye me-1"></i>View Details
+              </button>
+            </td>
+          </tr>
+        `).join("");
+      }
+
+      renderPagination(res.total, page);
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">Could not reach server. Check assets/config.js.</td></tr>`;
+    }
+  }
+
+  function renderPagination(total, page) {
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const pag = document.getElementById("pagination");
+    let html = "";
+
+    const addItem = (label, targetPage, disabled, active) => {
+      html += `<li class="page-item ${disabled ? "disabled" : ""} ${active ? "active" : ""}">
+        <a class="page-link" href="#" onclick="event.preventDefault(); ${disabled ? "" : `loadRows(${targetPage})`}">${label}</a>
+      </li>`;
+    };
+
+    addItem("«", page - 1, page <= 1, false);
+
+    let start = Math.max(1, page - 2);
+    let end = Math.min(totalPages, start + 4);
+    start = Math.max(1, end - 4);
+    for (let p = start; p <= end; p++) addItem(p, p, false, p === page);
+
+    addItem("»", page + 1, page >= totalPages, false);
+    pag.innerHTML = html;
+  }
+
+  function viewDetails(rowIndex) {
+    window.open(`details.html?row=${rowIndex}`, "_blank");
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (m) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[m]));
+  }
+
+  document.getElementById("searchInput").addEventListener("input", (e) => {
+    clearTimeout(searchDebounce);
+    const val = e.target.value;
+    searchDebounce = setTimeout(() => {
+      currentSearch = val;
+      loadRows(1);
+    }, 400);
+  });
+
+  loadRows(1);
+</script>
+</body>
+</html>
